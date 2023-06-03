@@ -1,5 +1,6 @@
-const headingEle = document.querySelectorAll("h1"); // array of objects (nodes)
-const buttons = document.getElementsByClassName("btn");
+const headingEle = document.getElementById("level-title"); // array of objects (nodes)
+const btns = document.getElementsByClassName("btn");
+const bodyEle = document.querySelector("body");
 
 let buttonColours = ["red", "blue", "green", "yellow"];
 
@@ -19,55 +20,68 @@ const detectDeviceType = () =>
     : 'Desktop';
 
 const deviceType = detectDeviceType();
-let currentHeading;
 
 if (deviceType == "Desktop") {
-  currentHeading = headingEle[0];
-  // disabling mobile's heading for desktop
-  headingEle[1].style.display = "none";
-} else {
-  currentHeading = headingEle[1];
-  // disabling desktop's heading for mobile
-  headingEle[0].style.display = "none";
-}
-
-// for changing heading with current level & starting the game
-document.onkeyup = () => {
-  // at first only started will be true (!false)
+  headingEle.innerHTML = `Press A Key to Start`;
+  
+  // For changing heading with current level & starting the game
+  document.onkeydown = () => {
+    // at first only started will be true (!false)
   if(!started) {
-      currentHeading.innerText = `level ${level}`;
-      nextSequence();
+      // headingEle.innerText = `level ${level}`; this is not required
+      nextSequence(); // to generate gamePattern (initiate the game)
       // after starting
       started = true;
+    }
   }
+  
+} else {
+  // Can include Tags using template literals
+  headingEle.innerHTML = `Touch here<span class="star">⭐</span> to Start`;
+  // touchend -> finger removed from screen
+  headingEle.addEventListener("touchend", () => {
+
+    if(!started) {
+      nextSequence(); 
+      started = true;
+    }
+
+  });
 }
 
-// jquery has to be replaced with vanilla js
-$(".btn").click(function() {
 
-  var userChosenColour = $(this).attr("id");
-  userClickedPattern.push(userChosenColour);
+// Accessing each button element, adding event listener to each, call func if any one of it is clicked
+for(let i = 0; i<btns.length; i++) {
 
-  playSound(userChosenColour);
-  animatePress(userChosenColour);
+  // different events for different devices
+  const eventType = (deviceType == "Desktop") ? "click" : "touchend";
 
-  //2. Call checkAnswer() after a user has clicked and chosen their answer, passing in the index of the last answer in the user's sequence.
-  checkAnswer(userClickedPattern.length - 1);
-});
+  btns[i].addEventListener(eventType, () => {
+    let clickedColor = btns[i].getAttribute("id");
+    userClickedPattern.push(clickedColor);
 
+    // playing sound
+    playSound(clickedColor);
+    // for animation
+    animatePress(clickedColor);
 
-//1. Create a new function called checkAnswer(), it should take one input with the name currentLevel
-function checkAnswer(currentLevel) {
+    // to check the answer is correct or not
+    // index of recently pressed button (color) to check with appropriate game pattern
+    checkAnswer(userClickedPattern.length - 1);
+  });
+}
 
-  //3. Write an if statement inside checkAnswer() to check if the most recent user answer is the same as the game pattern. If so then log "success", otherwise log "wrong".
-  if (gamePattern[currentLevel] === userClickedPattern[currentLevel]) {
+// checkAnswer(), it should take one input with the name currentLevel
+function checkAnswer(currentIndex) {
 
-    console.log("success");
+  // to check if the most recent user answer is the same as the game pattern. If so then log "success", otherwise log "wrong".
+  console.log(gamePattern[currentIndex] + "   " + userClickedPattern[currentIndex]);
+  if (gamePattern[currentIndex] === userClickedPattern[currentIndex]) {;
 
-    //4. If the user got the most recent answer right in step 3, then check that they have finished their sequence with another if statement.
+    // If the user got the most recent (latest) answer right, then check the both array length to end the current level and move to next (to avoid looping or errors)
     if (userClickedPattern.length === gamePattern.length) {
 
-      //5. Call nextSequence() after a 1000 millisecond delay.
+      // Call nextSequence() after a 1000 millisecond delay for next level (pattern matches)
       setTimeout(function() {
         nextSequence();
       }, 1000);
@@ -76,54 +90,76 @@ function checkAnswer(currentLevel) {
 
   } else {
 
-    console.log("wrong");
+    bodyEle.classList.add("game-over");
 
-    $("body").addClass("game-over");
-    $("h1").text("Game over, Press any key to restart");
+    if(deviceType == "Desktop") {
+      headingEle.innerText = "Game over, Press any key to restart";
+    } else {
+      headingEle.innerText = "Game over, Press here to restart";
+    }
+
     playSound("wrong");
     
     setTimeout(function() {
-      $("body").removeClass("game-over");
+      bodyEle.classList.remove("game-over");
     }, 200);
     startOver();// to reset all values
   }
 
 }
 
+// Generating gamePattern randomly
 function nextSequence() {
 
   // Once nextSequence() is triggered, reset the userClickedPattern to an empty array ready for the next level.
   userClickedPattern = [];
 
   level++;
-  $("#level-title").text("Level " + level);
+
+  headingEle.innerText = "Level " + level;
 
   var randomNumber = Math.floor(Math.random() * 4);
   var randomChosenColour = buttonColours[randomNumber];
   gamePattern.push(randomChosenColour);
 
-  $("#" + randomChosenColour).fadeIn(100).fadeOut(100).fadeIn(100);
+  // to show the choosen key by gamePattern (acknoledge the user)
+  const chosenBtn = document.getElementById(randomChosenColour);
+  chosenBtn.classList.add("chosen");
+  // $("#" + randomChosenColour).fadeIn(100).fadeOut(100).fadeIn(100);
+  setTimeout(() => {
+    chosenBtn.classList.remove("chosen");
+  }, 150);
+
   playSound(randomChosenColour);
 }
 
+// Playing sound during click
 function playSound(name) {
-  var audio = new Audio("sounds/" + name + ".mp3");
+  // creating audio object
+  let audio = new Audio("sounds/" + name + ".mp3");
+  // playing the audio object
   audio.play();
 }
 
+// For btn animation during click
 function animatePress(currentColor) {
-  $("#" + currentColor).addClass("pressed");
-  setTimeout(function() {
-    $("#" + currentColor).removeClass("pressed");
+  const animateBtn = document.getElementById(currentColor);
+  animateBtn.classList.add("pressed");
+  
+  // remove the class after 0.1 sec (100 ms)
+  setTimeout(() => {
+    animateBtn.classList.remove("pressed");
   }, 100);
 }
+
+// To restart the game, when game is over
 function startOver(){
   level = 0;
   started = false;
   gamePattern = [];
 }
 
-
+// For touch devices
 for(let i = 0; i < buttons.length; i++) {
   // adding eventlistener to all buttons
   buttons[i].addEventListener("touchend", () => {
